@@ -1,0 +1,13 @@
+# These are installed on top of the apache/airflow base image at container
+# startup via _PIP_ADDITIONAL_REQUIREMENTS in docker-compose.yaml.
+# Do NOT add apache-airflow here -- it is already baked into the base image
+# and re-adding it can cause version conflicts and slow startup.
+pandas>=2.0.0
+google-api-python-client>=2.100.0
+google-auth>=2.23.0
+google-auth-httplib2>=0.1.1
+# Snowflake -- required by dag2 (load_customer_data task)
+apache-airflow-providers-snowflake>=5.1.0
+snowflake-connector-python[pandas]>=3.0.0
+# XLSX support -- required for reading employees_raw.xlsx and shipments_raw.xlsx
+openpyxl>=3.1.0

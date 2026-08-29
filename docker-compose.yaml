@@ -1,0 +1,92 @@
+# -----------------------------------------------------------------------------
+# Minimal, single-machine Airflow setup (LocalExecutor + Postgres) so you can
+# get this running without needing a full production cluster.
+# For real production (multiple workers, high availability) you'd move to
+# CeleryExecutor/KubernetesExecutor later -- this is a solid, correct starting
+# point that will not need to be thrown away.
+#
+# Usage:
+#   1. cp .env.example .env   (then fill in your real SMTP + secret values)
+#   2. docker compose up airflow-init
+#   3. docker compose up -d
+#   4. Open http://localhost:8081  (user: airflow / pass: airflow)
+# -----------------------------------------------------------------------------
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.9.3-python3.11
+  env_file:
+    - .env
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: "Asia/Kolkata"
+    # Enables the "Test" button on Admin > Connections. Off by default since
+    # Airflow 2.7 (testing a connection can execute code) -- safe to enable
+    # here since this is a local dev environment, not a shared production one.
+    AIRFLOW__CORE__TEST_CONNECTION: "Enabled"
+    # snowflake-connector-python[pandas] adds the write_pandas() helper used
+    # in dag2 to bulk-load the clean dataframe into Snowflake -- the plain
+    # apache-airflow-providers-snowflake package alone doesn't guarantee the
+    # pandas/pyarrow extras are installed.
+    _PIP_ADDITIONAL_REQUIREMENTS: "google-api-python-client google-auth google-auth-httplib2 pandas apache-airflow-providers-snowflake snowflake-connector-python[pandas] openpyxl"
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./data:/opt/airflow/data
+    - ./config:/opt/airflow/config
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+
+  airflow-init:
+    <<: *airflow-common
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username airflow --password airflow \
+          --firstname Admin --lastname User \
+          --role Admin --email admin@example.com
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    restart: always
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    restart: always
+
+volumes:
+  postgres-db-volume:
