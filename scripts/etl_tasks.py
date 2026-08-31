@@ -1,11 +1,15 @@
 """
 scripts/etl_tasks.py
 ---------------------
-ETL business logic for the universal_etl_dag pipeline.
+ETL business logic for the Google Drive dynamic DAG pipeline.
 
 All functions here are pure Python — no Airflow DAG code.
-They are called by PythonOperator in dags/dag_universal_etl.py via the
+They are called by PythonOperator in dags/dag_google_drive_dynamic.py via the
 `python_callable` argument, receiving the Airflow task context as **kwargs.
+
+config_id resolution:
+- Dynamic DAG pattern  : passed directly via op_kwargs from build_dag() closure
+- Master-Worker pattern: read from dag_run.conf (backward compatible)
 
 Separation rationale:
 - DAG files (dags/)     : Airflow wiring — schedules, task dependencies, callbacks.
