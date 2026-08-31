@@ -45,17 +45,27 @@ logger = logging.getLogger("airflow.task")
 # TASK 1 — FETCH METADATA
 # =============================================================================
 
-def fetch_metadata(**context):
+def fetch_metadata(config_id=None, **context):
     """
-    Reads config_id from the DAG Run configuration and fetches the corresponding
-    metadata row from SOURCE_CONFIG in Snowflake. Pushes the metadata to XCom.
+    Fetches the SOURCE_CONFIG metadata row for the given config_id and pushes
+    it to XCom for downstream tasks.
+
+    config_id resolution (two supported patterns):
+    1. Dynamic DAG pattern  : passed directly via PythonOperator op_kwargs
+                              e.g. op_kwargs={"config_id": cfg["config_id"]}
+    2. Master-Worker pattern: read from dag_run.conf
+                              e.g. conf={"config_id": 3}
     """
-    dag_run_conf = context["dag_run"].conf or {}
-    config_id = dag_run_conf.get("config_id")
+    # Pattern 1: config_id came in directly via op_kwargs (dynamic dag factory)
+    # Pattern 2: config_id is in dag_run.conf (master-worker trigger)
+    if config_id is None:
+        dag_run_conf = context["dag_run"].conf or {}
+        config_id = dag_run_conf.get("config_id")
 
     if not config_id:
         raise ValueError(
-            "Missing config_id in dag_run.conf. This DAG must be triggered with a config_id."
+            "Missing config_id. Provide it via op_kwargs (dynamic DAG) "
+            "or dag_run.conf (master-worker trigger)."
         )
 
     logger.info("Fetching metadata for config_id: %s", config_id)
