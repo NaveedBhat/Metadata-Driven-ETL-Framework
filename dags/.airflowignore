@@ -1,0 +1,11 @@
+# .airflowignore
+# ---------------
+# Files listed here are skipped by Airflow's DAG discovery scanner.
+# Without this, Airflow parses config.py and alerts.py every cycle
+# looking for DAG objects — wasted CPU with no benefit.
+#
+# Only files that contain `with DAG(...)` or `@dag` should be scanned.
+# Reference: https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html#airflowignore
+
+config.py
+alerts.py

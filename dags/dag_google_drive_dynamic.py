@@ -111,6 +111,7 @@ def build_dag(cfg: dict):
         start_date=datetime(2025, 1, 1),
         catchup=False,
         max_active_runs=1,          # One run at a time per table
+        dagrun_timeout=timedelta(hours=2),  # Kill stuck runs after 2 hours — prevents zombie runs
         tags=["google-drive", "etl", table_slug],
         doc_md=(
             f"**{SERVICE_PROVIDER} / {cfg['table_name']}**\n\n"

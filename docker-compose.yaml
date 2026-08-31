@@ -28,6 +28,14 @@ x-airflow-common: &airflow-common
     # Airflow 2.7 (testing a connection can execute code) -- safe to enable
     # here since this is a local dev environment, not a shared production one.
     AIRFLOW__CORE__TEST_CONNECTION: "Enabled"
+    # -----------------------------------------------------------------------
+    # DAG parse interval — how often Airflow re-scans the dags/ folder.
+    # Default is 30s which causes fetch_google_drive_configs() to query
+    # Snowflake 120 times/hour at parse time. 300s = 12 queries/hour.
+    # Safe to increase in local/dev; production clusters often set 300-600s.
+    # -----------------------------------------------------------------------
+    AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "300"
+    AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: "300"
     # snowflake-connector-python[pandas] adds the write_pandas() helper used
     # in dag2 to bulk-load the clean dataframe into Snowflake -- the plain
     # apache-airflow-providers-snowflake package alone doesn't guarantee the
