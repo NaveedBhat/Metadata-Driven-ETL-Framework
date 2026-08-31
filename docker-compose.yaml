@@ -21,6 +21,9 @@ x-airflow-common: &airflow-common
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__CORE__DEFAULT_TIMEZONE: "Asia/Kolkata"
+    # Make /opt/airflow the Python root so both `from scripts.etl_tasks import ...`
+    # and `from config import ...` (dags/ is already on path via DAG folder) resolve.
+    PYTHONPATH: /opt/airflow
     # Enables the "Test" button on Admin > Connections. Off by default since
     # Airflow 2.7 (testing a connection can execute code) -- safe to enable
     # here since this is a local dev environment, not a shared production one.
@@ -32,6 +35,7 @@ x-airflow-common: &airflow-common
     _PIP_ADDITIONAL_REQUIREMENTS: "google-api-python-client google-auth google-auth-httplib2 pandas apache-airflow-providers-snowflake snowflake-connector-python[pandas] openpyxl"
   volumes:
     - ./dags:/opt/airflow/dags
+    - ./scripts:/opt/airflow/scripts
     - ./data:/opt/airflow/data
     - ./config:/opt/airflow/config
     - ./logs:/opt/airflow/logs
