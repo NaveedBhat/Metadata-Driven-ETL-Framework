@@ -512,10 +512,19 @@ To this:
 
 Do this for all 10 rows.
 
+> ⚠️ **Save the file before running!** After editing the File IDs, make sure
+> you save `03_setup_pipeline_configs.sql` in VS Code (Cmd+S) BEFORE copying
+> its contents into Snowflake. If you run the unmodified version, all 10 rows
+> will contain the original developer's File IDs and the pipeline will fail
+> trying to download files it has no access to.
+
 ### Step 5.2 — Run the Updated Script
 
-Once all 10 File IDs are updated, copy the full contents of the file and run
-it in your Snowflake worksheet.
+Once all 10 File IDs are updated and saved:
+1. Select all content in `03_setup_pipeline_configs.sql` (Cmd+A).
+2. Copy it (Cmd+C).
+3. Paste it into a Snowflake worksheet (Cmd+V).
+4. Click **Run All** (the ▶ button at the top-right of the worksheet).
 
 Verify it worked:
 ```sql
@@ -523,8 +532,9 @@ SELECT CONFIG_ID, TABLE_NAME, EXTRACT_LOCATION, IS_ACTIVE
 FROM CUSTOMER_PIPELINE_DB.ETL.SOURCE_CONFIG
 ORDER BY CONFIG_ID;
 ```
-You should see 10 rows, all with `IS_ACTIVE = TRUE`, and your File IDs in
-`EXTRACT_LOCATION`.
+You should see 10 rows, all with `IS_ACTIVE = TRUE`, and YOUR File IDs in
+`EXTRACT_LOCATION`. If you see the original IDs (starting with `1kALm-` or
+`1XFFWVsW-`), you did not save your edits before running.
 
 ---
 
@@ -539,34 +549,49 @@ Open it in VS Code:
 airflow_customer_pipeline/.env
 ```
 
-Fill it in with your own values:
+The `.env` file already exists in the project with placeholder comments. Open it and **replace only the values marked below with your own**:
 
 ```bash
-# Email settings — Airflow will send alerts from this Gmail account
+# -----------------------------------------------------------------------
+# Fill in YOUR values where indicated.
+# NEVER commit this file to git — it is already in .gitignore.
+# -----------------------------------------------------------------------
+
+# Email settings — Airflow sends success/failure alerts from this address.
+# REPLACE the two lines below with your own Gmail address:
 AIRFLOW__SMTP__SMTP_HOST=smtp.gmail.com
 AIRFLOW__SMTP__SMTP_STARTTLS=True
 AIRFLOW__SMTP__SMTP_SSL=False
-AIRFLOW__SMTP__SMTP_USER=your.email@gmail.com
-AIRFLOW__SMTP__SMTP_PASSWORD=abcd efgh ijkl mnop    # 16-char Gmail App Password
+AIRFLOW__SMTP__SMTP_USER=YOUR_EMAIL@gmail.com          ← REPLACE THIS
+AIRFLOW__SMTP__SMTP_PASSWORD=abcd efgh ijkl mnop       ← REPLACE THIS (see below)
 AIRFLOW__SMTP__SMTP_PORT=587
-AIRFLOW__SMTP__SMTP_MAIL_FROM=your.email@gmail.com
+AIRFLOW__SMTP__SMTP_MAIL_FROM=YOUR_EMAIL@gmail.com     ← REPLACE THIS
 
-# Airflow core settings — leave these as-is
+# Airflow core settings — leave these exactly as-is:
 AIRFLOW__CORE__EXECUTOR=LocalExecutor
 AIRFLOW__CORE__LOAD_EXAMPLES=False
 ```
 
+> ⚠️ The `.env` file already has someone else's email address in it when you
+> clone the repo. You MUST overwrite the `SMTP_USER`, `SMTP_PASSWORD`, and
+> `SMTP_MAIL_FROM` lines with your own values. If you skip this, alerts will
+> be sent to the wrong inbox.
+
 **How to create a Gmail App Password:**
 1. Go to https://myaccount.google.com/apppasswords
 2. Sign in with the Gmail account you want to send alerts from.
+   (Your Google account must have 2-Factor Authentication turned on first.
+   If it is not, enable it at https://myaccount.google.com/security)
 3. Under "App name", type `Airflow Pipeline`.
 4. Click **Create**.
-5. Google shows you a 16-character password like `abcd efgh ijkl mnop`.
-6. Copy it into the `.env` file as `AIRFLOW__SMTP__SMTP_PASSWORD`.
+5. Google shows you a 16-character password (with spaces) like `abcd efgh ijkl mnop`.
+6. Copy the **entire string including spaces** and paste it as the value of
+   `AIRFLOW__SMTP__SMTP_PASSWORD` in the `.env` file.
 
-> **Why App Password?** Google blocks "less secure app access" by default.
-> An App Password is a special one-time password that lets Airflow send email
-> without your normal password or 2FA.
+> **Why App Password and not your normal password?** Google blocks direct
+> password login for third-party apps by default. An App Password is a
+> one-time 16-character code that lets Airflow authenticate without your
+> real password or triggering 2FA prompts.
 
 ---
 
@@ -603,13 +628,19 @@ Only run this once — the first time you set up the project.
 docker compose up airflow-init
 ```
 
-Watch the output. Wait until you see the line:
+Watch the output scroll by. Wait until you see:
 ```
 User "airflow" created with role "Admin"
 airflow-init-1 exited with code 0
 ```
 
-Then press **Ctrl+C** to stop watching the output.
+The `airflow-init` container exits automatically when it is done (exit code 0).
+You do NOT need to press Ctrl+C. Once you see `exited with code 0`, it is
+finished and you can move to Step 7.2.
+
+> If you see `exited with code 1`, something went wrong. The most common cause
+> is that Docker Desktop is not running. Check the Docker menu bar icon and
+> make sure Docker is fully started before running this command.
 
 ---
 
@@ -743,18 +774,26 @@ docker compose restart airflow-scheduler
 Variables are key-value settings stored in Airflow's database. They let you
 change runtime settings without editing Python code.
 
-1. In the Airflow UI, click **Admin → Variables**.
-2. Click the **+** button.
-3. Add this variable:
+1. In the Airflow UI, click **Admin** in the top menu.
+2. Click **Variables**.
+3. Click the **+** (blue plus button) to add a new variable.
+4. Fill in the form:
 
-| Key | Value |
+| Field | What to type |
 |---|---|
-| `customer_pipeline_alert_email` | `your.email@gmail.com` |
+| **Key** | `customer_pipeline_alert_email` |
+| **Val** | `your.email@gmail.com` — use the same Gmail address as your `.env` file |
+| **Description** | *(optional)* `Email address for pipeline success/failure alerts` |
 
-4. Click **Save**.
+5. Click **Save**.
 
-> This is the ONLY variable you must set. Everything else already has correct
-> default values in the code for this Docker environment.
+> **This is the only variable you must set.** All other variables in the code
+> already have correct defaults for this Docker environment:
+> - `gdrive_service_account_file` defaults to `/opt/airflow/config/gdrive_service_account.json` ✓
+> - `SNOWFLAKE_CONN_ID` defaults to `snowflake_customer_pipeline` ✓
+> - All file paths default to the correct Docker mount points ✓
+>
+> You do NOT need to set these manually unless you want to override the defaults.
 
 ---
 
