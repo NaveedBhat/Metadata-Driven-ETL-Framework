@@ -29,7 +29,7 @@ from scripts.etl_tasks import (
     transform_file,
     load_to_snowflake,
 )
-from alerts import dag_success_alert, dag_failure_alert
+from alerts import dag_success_alert, task_failure_alert
 
 logger = logging.getLogger("airflow.task")
 
@@ -42,7 +42,7 @@ DEFAULT_ARGS = {
     "email_on_retry": False,
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
-    "on_failure_callback": dag_failure_alert,
+    "on_failure_callback": task_failure_alert,
 }
 
 def fetch_icloud_configs():
