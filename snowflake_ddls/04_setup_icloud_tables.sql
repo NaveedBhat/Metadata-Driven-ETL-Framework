@@ -89,7 +89,22 @@ SHOW TABLES IN SCHEMA CUSTOMER_PIPELINE_DB.RAW;
 
 USE SCHEMA ETL;
 
+-- =================================================================
+-- STEP 1: Remove the incorrectly interleaved iCloud rows
+-- (They got CONFIG_IDs 2, 4, 6 instead of 11, 12, 13)
+-- =================================================================
+DELETE FROM CUSTOMER_PIPELINE_DB.ETL.SOURCE_CONFIG
+WHERE VENDOR = 'ICLOUD_LOCAL';
+
+-- =================================================================
+-- STEP 2: Re-insert iCloud rows with explicit CONFIG_IDs 11, 12, 13
+-- Using explicit IDs keeps numbering clean regardless of sequence state:
+--   1–10  → Google Drive (set by 03_setup_pipeline_configs.sql)
+--   11–13 → iCloud Local
+--   14+   → any future source
+-- =================================================================
 INSERT INTO CUSTOMER_PIPELINE_DB.ETL.SOURCE_CONFIG (
+    CONFIG_ID,
     VENDOR,
     EXTRACT_LOCATION,
     GD_LOCATION,
@@ -103,50 +118,35 @@ INSERT INTO CUSTOMER_PIPELINE_DB.ETL.SOURCE_CONFIG (
     IS_ACTIVE
 )
 VALUES
--- Config ID 11: addresses_raw.csv (CSV, comma delimited)
-(
-    'ICLOUD_LOCAL',
-    'Downloads/Airflow/addresses_raw.csv',
-    'iCloud Drive/Downloads/Airflow/addresses_raw.csv',
-    'RAW',
-    'ADDRESSES',
-    'addresses_raw.csv',
-    'CSV',
-    ',',
-    'address_id,customer_id,address_line,city,state,pincode,address_type',
-    '',          -- all columns are mandatory
-    TRUE
-),
--- Config ID 12: discounts_raw.txt (TXT, TAB delimited)
-(
-    'ICLOUD_LOCAL',
-    'Downloads/Airflow/discounts_raw.txt',
-    'iCloud Drive/Downloads/Airflow/discounts_raw.txt',
-    'RAW',
-    'DISCOUNTS',
-    'discounts_raw.txt',
-    'TXT',
-    '\t',        -- TAB character as delimiter
-    'discount_id,order_id,coupon_code,discount_percent,discount_amount,applied_date',
-    '',          -- all columns are mandatory
-    TRUE
-),
--- Config ID 13: inventory_log_raw.xlsx (Excel)
-(
-    'ICLOUD_LOCAL',
-    'Downloads/Airflow/inventory_log_raw.xlsx',
-    'iCloud Drive/Downloads/Airflow/inventory_log_raw.xlsx',
-    'RAW',
-    'INVENTORY_LOG',
-    'inventory_log_raw.xlsx',
-    'XLSX',
-    ',',
-    'log_id,product_id,warehouse,transaction_type,quantity,transaction_date,remarks',
-    'remarks',   -- remarks column is allowed to be empty
-    TRUE
-);
+-- 11: ADDRESSES (CSV, comma delimited)
+(11, 'ICLOUD_LOCAL',
+ 'Downloads/Airflow/addresses_raw.csv',
+ 'iCloud Drive/Downloads/Airflow/addresses_raw.csv',
+ 'RAW', 'ADDRESSES', 'addresses_raw.csv', 'CSV', ',',
+ 'address_id,customer_id,address_line,city,state,pincode,address_type',
+ '', TRUE),
 
--- Verify all 13 rows (10 Google Drive + 3 iCloud)
+-- 12: DISCOUNTS (TXT, TAB delimited)
+(12, 'ICLOUD_LOCAL',
+ 'Downloads/Airflow/discounts_raw.txt',
+ 'iCloud Drive/Downloads/Airflow/discounts_raw.txt',
+ 'RAW', 'DISCOUNTS', 'discounts_raw.txt', 'TXT', '\t',
+ 'discount_id,order_id,coupon_code,discount_percent,discount_amount,applied_date',
+ '', TRUE),
+
+-- 13: INVENTORY_LOG (XLSX — remarks may be empty)
+(13, 'ICLOUD_LOCAL',
+ 'Downloads/Airflow/inventory_log_raw.xlsx',
+ 'iCloud Drive/Downloads/Airflow/inventory_log_raw.xlsx',
+ 'RAW', 'INVENTORY_LOG', 'inventory_log_raw.xlsx', 'XLSX', ',',
+ 'log_id,product_id,warehouse,transaction_type,quantity,transaction_date,remarks',
+ 'remarks', TRUE);
+
+-- =================================================================
+-- Verify: You should now see exactly 13 rows in order
+--   1–10  GOOGLE_DRIVE
+--   11–13 ICLOUD_LOCAL
+-- =================================================================
 SELECT
     CONFIG_ID,
     VENDOR,
