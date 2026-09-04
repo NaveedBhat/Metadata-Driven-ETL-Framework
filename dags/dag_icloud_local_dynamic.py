@@ -94,7 +94,7 @@ def build_dag(config):
         dag_id=dag_id,
         default_args=DEFAULT_ARGS,
         description=f"ETL pipeline for {table_name} from {SERVICE_PROVIDER} (Config ID {config_id})",
-        schedule=None,  # Manual trigger by default
+        schedule=None,  # Manual trigger by default... Reason:iCloud files come from your Mac — only when you manually add/update them
         start_date=datetime(2024, 1, 1),
         catchup=False,
         tags=[SERVICE_PROVIDER.lower(), table_name, "dynamic"],

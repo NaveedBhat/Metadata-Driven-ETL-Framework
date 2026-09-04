@@ -108,6 +108,19 @@ def build_dag(cfg: dict):
         dag_id=dag_id,
         default_args=default_args,
         schedule=None,              # Manual trigger; change to "@daily" etc. per table if needed
+        
+        # Option A: Every day at 6:00 AM IST (1:30 AM UTC)
+        # schedule="30 1 * * *",
+
+        # Option B: Every day at midnight UTC
+        # schedule="0 0 * * *",
+
+        # Option C: Every hour
+        # schedule="0 * * * *",
+
+        # Option D: Every Monday at 8 AM UTC (weekly)
+        # schedule="0 8 * * 1",
+        
         start_date=datetime(2025, 1, 1),
         catchup=False,
         max_active_runs=1,          # One run at a time per table
