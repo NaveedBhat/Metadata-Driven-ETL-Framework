@@ -142,11 +142,40 @@ def download_file(**context):
     vendor = metadata["vendor"]
     file_format = metadata["file_format"]  # Already uppercased in fetch_metadata
 
-    if vendor != "GOOGLE_DRIVE":
+    if vendor not in ["GOOGLE_DRIVE", "ICLOUD_LOCAL"]:
         raise NotImplementedError(f"Vendor '{vendor}' not supported yet in download_file task.")
 
     file_id = metadata["extract_location"]
     raw_file_path = get_raw_file_path(table_name, config_id)  # Always .csv on disk
+
+    if vendor == "ICLOUD_LOCAL":
+        import shutil
+        # file_id contains the relative path (e.g. "Downloads/Airflow/addresses_raw.csv")
+        icloud_base = "/opt/airflow/icloud"
+        source_path = os.path.join(icloud_base, file_id)
+        if not os.path.exists(source_path):
+            raise FileNotFoundError(
+                f"iCloud file not found: {source_path}. "
+                f"Ensure iCloud Drive is synced on the host Mac."
+            )
+        
+        # If it's Excel, we still need to convert it to CSV like the Google Drive branch does
+        # for uploaded binaries.
+        if file_format == "XLSX":
+            logger.info("Reading local iCloud XLSX: %s", source_path)
+            df = pd.read_excel(source_path)
+            df.to_csv(raw_file_path, index=False)
+            logger.info("Converted local iCloud XLSX to CSV: %s", raw_file_path)
+        else:
+            logger.info("Copying local iCloud file: %s", source_path)
+            shutil.copy2(source_path, raw_file_path)
+            logger.info("File copied to %s", raw_file_path)
+        
+        return raw_file_path
+
+    # =========================================================
+    # Google Drive specific logic below
+    # =========================================================
 
     os.makedirs(os.path.dirname(raw_file_path), exist_ok=True)
 

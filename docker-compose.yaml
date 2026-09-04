@@ -48,6 +48,7 @@ x-airflow-common: &airflow-common
     - ./config:/opt/airflow/config
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
+    - ~/Library/Mobile Documents/com~apple~CloudDocs:/opt/airflow/icloud:ro
 
 services:
   postgres:
